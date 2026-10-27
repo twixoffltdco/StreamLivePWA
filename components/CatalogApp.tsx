@@ -8,7 +8,38 @@ const sourceNames:Record<string,string>={streamlive:'StreamLive',domtv:'DomTV',f
 const makeId=(item:Item)=>btoa(unescape(encodeURIComponent(JSON.stringify({url:item.url,source:item.source,title:item.title,thumbnail:item.thumbnail,live:item.isLive})))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 export default function CatalogApp(){
  const [items,setItems]=useState<Item[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState(''),[source,setSource]=useState('all'),[query,setQuery]=useState(''),[tab,setTab]=useState('home'),[favorites,setFavorites]=useState<string[]>([]);
- async function load(){setLoading(true);setError('');try{const r=await fetch('/api/catalog',{cache:'no-store'});const j=await r.json();setItems(j.items||[]);if(!j.items?.length)setError('Каталог пока не вернул карточки. Проверьте доступность PHP API и зеркал.');}catch{setError('Не удалось подключить каталог. Проверьте соединение и адрес STREAMLIVE_SITE_URL.')}finally{setLoading(false)}}
+ async function load(){
+  setLoading(true);setError('');
+  const siteUrl=(process.env.NEXT_PUBLIC_STREAMLIVE_SITE_URL||'https://streamlive.tatnet.app').replace(/\/$/,'');
+  let internalError='';
+  try {
+   const r=await fetch('/api/catalog',{cache:'no-store'});
+   const type=r.headers.get('content-type')||'';
+   if(!r.ok) throw new Error(`API приложения вернул HTTP ${r.status}`);
+   if(!type.includes('application/json')) throw new Error('Путь /api/catalog не вернул JSON. Возможно, хостинг не запускает Next.js API routes.');
+   const j=await r.json();
+   if(Array.isArray(j.items)&&j.items.length){setItems(j.items);setLoading(false);return;}
+   internalError='Внутренний API не вернул карточки';
+  }catch(e){internalError=e instanceof Error?e.message:'внутренний API недоступен';}
+  // Резервный режим: если Next.js API routes недоступны, загружаем каталог StreamLive прямо из PHP API.
+  // PHP endpoint отдаёт Access-Control-Allow-Origin: *, поэтому запрос возможен с отдельного PWA-домена.
+  try{
+   const r=await fetch(`${siteUrl}/api/native_home.php`,{cache:'no-store',headers:{accept:'application/json'}});
+   if(!r.ok) throw new Error(`PHP API вернул HTTP ${r.status}`);
+   const type=r.headers.get('content-type')||'';
+   if(!type.includes('application/json')) throw new Error('PHP API вернул не JSON');
+   const j=await r.json();
+   const videos=(Array.isArray(j.videos)?j.videos:[]).map((v:any)=>({id:`sl-video-${v.id}`,title:String(v.title||'Видео'),url:`${siteUrl}/embed_video.php?slug=${encodeURIComponent(v.slug||v.id)}`,thumbnail:toAbsolute(v.thumbnail_url,siteUrl),isLive:false,source:'streamlive'}));
+   const channels=(Array.isArray(j.channels)?j.channels:[]).map((c:any)=>({id:`sl-channel-${c.id}`,title:String(c.title||'Канал'),url:`${siteUrl}/embed.php?slug=${encodeURIComponent(c.slug||c.id)}&cinema=0`,thumbnail:toAbsolute(c.thumbnail_url,siteUrl),isLive:true,source:'streamlive'}));
+   const fallback=[...channels,...videos];
+   setItems(fallback);
+   if(!fallback.length) setError(`PHP-сайт ответил, но каталог пуст. Проверь api/native_home.php и опубликованные записи. (${internalError})`);
+  }catch(e){
+   const phpError=e instanceof Error?e.message:'PHP API недоступен';
+   setItems([]);setError(`Не удалось загрузить каталог. Next API: ${internalError}. PHP API: ${phpError}. Адрес: ${siteUrl}/api/native_home.php`);
+  }finally{setLoading(false)}
+ }
+ function toAbsolute(value:unknown,base:string){if(!value)return '';try{return new URL(String(value),base).toString()}catch{return ''}}
  useEffect(()=>{load();try{setFavorites(JSON.parse(localStorage.getItem('sl-favs')||'[]'))}catch{}},[]);
  const visible=useMemo(()=>items.filter(i=>(source==='all'||i.source===source)&&(tab!=='favorites'||favorites.includes(i.id))&&(`${i.title} ${sourceNames[i.source]||''}`).toLowerCase().includes(query.toLowerCase())),[items,source,tab,favorites,query]);
  function toggle(item:Item){const next=favorites.includes(item.id)?favorites.filter(x=>x!==item.id):[...favorites,item.id];setFavorites(next);localStorage.setItem('sl-favs',JSON.stringify(next))}

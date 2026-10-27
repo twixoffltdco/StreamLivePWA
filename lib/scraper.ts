@@ -19,7 +19,7 @@ export async function fetchChannels(source: SourceId): Promise<ChannelItem[]> {
       const r = await fetch(`${SITE_URL}/api/native_home.php`, { headers, next: { revalidate: 30 } });
       if (r.ok) {
         const j = await r.json();
-        const videos: ChannelItem[] = (j.videos || []).map((v: any) => ({ id: `sl-video-${v.id}`, title: clean(String(v.title || 'Видео')), url: `${SITE_URL}/video_embed.php?slug=${encodeURIComponent(v.slug || v.id)}`, thumbnail: abs(v.thumbnail_url, SITE_URL), isLive: false, source: 'streamlive', description: '' }));
+        const videos: ChannelItem[] = (j.videos || []).map((v: any) => ({ id: `sl-video-${v.id}`, title: clean(String(v.title || 'Видео')), url: `${SITE_URL}/embed_video.php?slug=${encodeURIComponent(v.slug || v.id)}`, thumbnail: abs(v.thumbnail_url, SITE_URL), isLive: false, source: 'streamlive', description: '' }));
         const channels: ChannelItem[] = (j.channels || []).map((c: any) => ({ id: `sl-channel-${c.id}`, title: clean(String(c.title || 'Канал')), url: `${SITE_URL}/embed.php?slug=${encodeURIComponent(c.slug || c.id)}&cinema=0`, thumbnail: abs(c.thumbnail_url, SITE_URL), isLive: true, source: 'streamlive', description: '' }));
         return [...channels, ...videos];
       }
