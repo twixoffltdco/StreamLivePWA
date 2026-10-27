@@ -5,25 +5,26 @@ const withPWA = require('next-pwa')({
   register: true,          // автоматически регистрирует service worker
   skipWaiting: true,       // мгновенное активация нового SW
   disable: process.env.NODE_ENV === 'development', // в dev — отключено
-  buildExts: [/\.html$/],
+  // Важно: next-pwa@5.6.0 принимает только часть опций на верхнем уровне
+  // (dest, register, skipWaiting, cacheOnFrontEndNav, reloadOnOnline и т.д.).
+  // Всё остальное через "...workbox" прокидывается напрямую в GenerateSW
+  // workbox-webpack-plugin, который валидирует свои поля и падает на
+  // неизвестных ('buildExts' / 'aggressiveFrontEndNavCaching' не поддерживаются).
   cacheOnFrontEndNav: true,
-  aggressiveFrontEndNavCaching: true,
   reloadOnOnline: true,
-  workboxOptions: {
-    disableDevLogs: true,
-    // Стриминговые домены НЕ кешируем (iframe-контент всегда живой),
-    // кешируем только own-origin статические ресурсы.
-    runtimeCaching: [
-      {
-        urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,
-        handler: 'CacheFirst',
-        options: {
-          cacheName: 'google-fonts',
-          expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 },
-        },
+  disableDevLogs: true,
+  // Стриминговые домены НЕ кешируем (iframe-контент всегда живой),
+  // кешируем только own-origin статические ресурсы.
+  runtimeCaching: [
+    {
+      urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,
+      handler: 'CacheFirst',
+      options: {
+        cacheName: 'google-fonts',
+        expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 },
       },
-    ],
-  },
+    },
+  ],
 });
 
 /** @type {import('next').NextConfig} */

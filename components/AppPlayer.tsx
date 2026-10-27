@@ -14,7 +14,7 @@
 import {
   Maximize2,
   Minimize2,
-  Pip,
+  PictureInPicture,
   RefreshCw,
   Tv,
   X,
@@ -206,7 +206,7 @@ export default function AppPlayer() {
             aria-pressed={pipFloating}
             className="sl-focus sl-focus-pink rounded-xl border border-white/15 bg-[#15151c] p-3 text-zinc-200 hover:border-[#fe2c55]/60"
           >
-            <Pip size={22} aria-hidden />
+            <PictureInPicture size={22} aria-hidden />
           </button>
 
           <button
