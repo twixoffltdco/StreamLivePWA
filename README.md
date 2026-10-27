@@ -37,18 +37,7 @@
 
 ---
 
-## 📸 Скриншоты
 
-> Заглушки — добавьте реальные снимки в `docs/screenshots/`.
-
-| Лендинг | Приложение (ТВ-режим) |
-|---|---|
-| ![Landing](docs/screenshots/landing.png) | ![Player](docs/screenshots/player.png) |
-| *Тёмный лендинг Zoomer 2026 с кнопкой установки* | *Iframe-плеер с панелью зеркал и D-pad-фокусом* |
-
-| PiP (плавающее окно) | FAQ / инструкция установки |
-|---|---|
-| ![PiP](docs/screenshots/pip.png) | ![FAQ](docs/screenshots/faq.png) |
 
 ---
 
