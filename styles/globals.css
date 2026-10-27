@@ -165,3 +165,13 @@ a:focus-visible,
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Каталог: изображения не должны ломать сетку на телевизорах */
+img { max-width: 100%; }
+button, a, input, select { -webkit-tap-highlight-color: transparent; }
+@media (min-width: 1600px) {
+  .sl-tv-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sl-focus:focus-visible, button:focus-visible, a:focus-visible, [tabindex]:focus-visible { transform: none; }
+}
