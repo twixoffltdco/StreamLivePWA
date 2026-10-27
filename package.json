@@ -1,0 +1,45 @@
+{
+  "name": "streamlive-native-web-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "StreamLive Native Web App — первый нативный PWA-плеер для domtv.blyz.ru, streamlivetv.freedev.app и streamliveru.web1337.net с TV-оптимизированным управлением (D-pad) и Picture-in-Picture.",
+  "license": "MIT",
+  "author": "StreamLive Community",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/streamlive/streamlive-native-web-app.git"
+  },
+  "keywords": [
+    "pwa",
+    "nextjs",
+    "smart-tv",
+    "dpad",
+    "picture-in-picture",
+    "streaming",
+    "domtv",
+    "streamlivetv"
+  ],
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "export": "next build && next export"
+  },
+  "dependencies": {
+    "lucide-react": "^0.344.0",
+    "next": "14.2.5",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.30",
+    "@types/react": "^18.2.66",
+    "@types/react-dom": "^18.2.22",
+    "autoprefixer": "^10.4.19",
+    "next-pwa": "^5.6.0",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.3",
+    "typescript": "^5.4.3"
+  }
+}

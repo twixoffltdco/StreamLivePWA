@@ -1,0 +1,167 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   StreamLive Native Web App — глобальные стили
+   Палитра "Zoomer 2026": #000000 / #00f2ea / #fe2c55
+   ============================================================ */
+
+:root {
+  --sl-black: #000000;
+  --sl-cyan: #00f2ea;
+  --sl-pink: #fe2c55;
+  /* TV-safe: крупный базовый кегль для чтения с дивана (~3 м) */
+  --sl-focus-ring: 3px;
+}
+
+html {
+  font-size: 18px; /* крупнее стандартных 16px — TV readability */
+}
+
+@media (min-width: 1600px) {
+  /* На больших/ТВ экранах дополнительно увеличиваем текст */
+  html {
+    font-size: 21px;
+  }
+}
+
+body {
+  background: var(--sl-black);
+  color: #f5f5f7;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}
+
+/* ============================================================
+   КРИТИЧНО ДЛЯ ТВ: фокус с пульта (D-pad)
+   :focus-visible — яркая обводка + увеличение, видно на диване
+   ============================================================ */
+
+.sl-focus,
+button,
+a,
+input,
+select,
+[tabindex] {
+  outline: none;
+  transition:
+    transform 140ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 140ms ease,
+    outline-offset 140ms ease,
+    border-color 140ms ease;
+}
+
+.sl-focus:focus-visible,
+button:focus-visible,
+a:focus-visible,
+[tabindex]:focus-visible {
+  outline: var(--sl-focus-ring) solid var(--sl-cyan);
+  outline-offset: 4px;
+  border-radius: inherit;
+  transform: scale(1.05);
+  box-shadow:
+    0 0 0 6px rgba(0, 242, 234, 0.18),
+    0 0 28px rgba(0, 242, 234, 0.55);
+  z-index: 20;
+  position: relative;
+}
+
+/* Акцентная (розовая) версия фокуса для ключевых действий */
+.sl-focus-pink:focus-visible {
+  outline-color: var(--sl-pink);
+  box-shadow:
+    0 0 0 6px rgba(254, 44, 85, 0.18),
+    0 0 28px rgba(254, 44, 85, 0.55);
+}
+
+/* Мышь/тач: не показываем кольцо фокуса — только пульт (focus-visible) */
+.sl-focus:focus:not(:focus-visible) {
+  outline: none;
+  transform: none;
+  box-shadow: none;
+}
+
+/* ============================================================
+   Компонентные утилиты
+   ============================================================ */
+
+.sl-card {
+  @apply rounded-2xl border border-white/10 bg-[#0b0b0f];
+}
+
+.sl-gradient-text {
+  background: linear-gradient(90deg, var(--sl-cyan), var(--sl-pink));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Кнопка источника (зазеркаливание доменов) */
+.sl-source-btn {
+  @apply sl-focus rounded-xl border px-5 py-3 text-base font-bold tracking-wide;
+}
+
+.sl-source-btn[data-active='true'] {
+  @apply border-transparent bg-gradient-to-r from-[#00f2ea] to-[#fe2c55] text-black shadow-glow-cyan;
+}
+
+.sl-source-btn[data-active='false'] {
+  @apply border-white/15 bg-[#15151c] text-zinc-300 hover:border-[#00f2ea]/60 hover:text-white;
+}
+
+/* Плавающий PiP-оверлей (имитация Document Picture-in-Picture) */
+.sl-pip-floating {
+  position: fixed;
+  right: 1.5rem;
+  bottom: 1.5rem;
+  width: min(42vw, 560px);
+  aspect-ratio: 16 / 9;
+  z-index: 9999;
+  border-radius: 1rem;
+  overflow: hidden;
+  border: 3px solid var(--sl-cyan);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.6),
+    0 18px 60px rgba(0, 0, 0, 0.8),
+    0 0 32px rgba(0, 242, 234, 0.35);
+  background: #000;
+  animation: pipIn 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes pipIn {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Скроллбар в тёмном стиле */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: #000;
+}
+::-webkit-scrollbar-thumb {
+  background: #2a2a33;
+  border-radius: 6px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--sl-cyan);
+}
+
+/* Уважение к пользователям с пониженной анимацией */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
