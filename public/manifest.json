@@ -1,0 +1,43 @@
+{
+  "name": "StreamLive TV",
+  "short_name": "StreamLive",
+  "description": "Нативное веб-приложение для domtv.blyz.ru, streamlivetv.freedev.app и streamliveru.web1337.net. Управление с пульта (D-pad), Picture-in-Picture, полноэкранный режим.",
+  "start_url": "/app",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "fullscreen", "minimal-ui"],
+  "orientation": "landscape",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "lang": "ru",
+  "dir": "ltr",
+  "categories": ["entertainment", "live-streaming", "tv"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Смотреть ТВ",
+      "short_name": "ТВ",
+      "url": "/app",
+      "icons": [{ "src": "/icons/icon-192.svg", "sizes": "192x192" }]
+    }
+  ]
+}
