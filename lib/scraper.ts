@@ -1,7 +1,7 @@
 /**
  * StreamLive PWA: серверный сборщик единой ленты.
- * Каждый элемент сохраняет свой источник. Одинаковые материалы на разных
- * зеркалах намеренно не объединяются и не удаляются.
+ * Каналы с одинаковым названием объединяются в одну карточку, но варианты
+ * воспроизведения со всех зеркал сохраняются. Остальные материалы остаются раздельными.
  */
 import * as cheerio from 'cheerio';
 import { promises as fs } from 'node:fs';
@@ -9,6 +9,7 @@ import { fetchSourcePage } from './source-fetch';
 
 export type SourceId = 'domtv' | 'freedev' | 'web1337';
 export type ContentKind = 'channel' | 'video' | 'forum' | 'other';
+export type SourceOption = { source: SourceId; url: string; playUrl: string };
 export type CatalogItem = {
   id: string;
   title: string;
@@ -19,6 +20,7 @@ export type CatalogItem = {
   kind: ContentKind;
   description?: string;
   playUrl?: string;
+  mirrors?: SourceOption[];
 };
 export type ChannelItem = CatalogItem;
 export type VideoData = { title: string; description: string; videoUrl: string; thumbnail: string; source: SourceId };
@@ -77,7 +79,10 @@ const abs = (v: string | undefined, base: string) => {
   try { return new URL(v, base).toString(); } catch { return ''; }
 };
 const clean = (s: string) => s.replace(/\s+/g, ' ').trim();
-const ignored = /^(войти|вход|регистрация|политика|контакты|профиль|поддержка|настройки|соглашение|главная|home|menu|меню|поиск|search|rss|назад|вперёд|далее|предыдущая)$/i;
+const ignored = /^(войти|вход|регистрация|политика|контакты|профиль|поддержка|настройки|соглашение|главная|home|menu|меню|поиск|search|rss|назад|вперёд|далее|предыдущая|смотреть онлайн|смотреть все|все каналы|все видео|каталог|категории|разделы|страница не найдена|ошибка|доступ запрещён|403 forbidden|404 not found|streamlive|streamlive tv)$/i;
+const serviceTitle = /^(?:страница|раздел|категория|категории|архив|поиск|результаты поиска|регистрация|авторизация|вход|выход|личный кабинет|профиль|настройки|поддержка|контакты|о сайте|правовая информация|политика конфиденциальности|пользовательское соглашение|ошибка \d{3}|error \d{3}|forbidden|not found|access denied|cloudflare|just a moment|checking your browser|enable javascript|javascript required|captcha|подтвердите что вы не робот|проверка браузера)(?:\s*[-—:]?.*)?$/i;
+const servicePath = /\/(?:login|logout|register|registration|signup|signin|search|account|profile|settings|support|contacts|about|privacy|terms|policy|sitemap|feed|rss|api|admin|auth|captcha|challenge)(?:\/|$)/i;
+const genericChannelTitles = new Set(['канал','телеканал','тв','tv','live','stream','прямой эфир','онлайн','смотреть онлайн','streamlive tv']);
 const challengePattern = /slowAES|__test=|cf-chl-|challenge-platform|just a moment|checking your browser|enable javascript and cookies|ddos-guard|проверка браузера/i;
 
 function classify(title: string, href: string, context: string): ContentKind {
@@ -112,9 +117,42 @@ function looksBlocked(html: string, status: number): boolean {
 }
 
 function makeId(source: SourceId, href: string): string {
-  // URL-safe deterministic id. Source is part of the id, so mirrors stay separate.
   const encoded = Buffer.from(href).toString('base64url').slice(0, 180);
   return `${source}-${encoded}`;
+}
+
+function normalizeChannelTitle(title: string): string {
+  return clean(title).toLocaleLowerCase('ru-RU')
+    .replace(/\b(streamlive|stream live|domtv|streamlive ru)\b/gi, ' ')
+    .replace(/(^|\s)(hd|4k|uhd|онлайн|online|live|прямой эфир)(?=\s|$)/gi, ' ')
+    .replace(/[^a-zа-яё0-9]+/gi, ' ').trim().replace(/\s+/g, ' ');
+}
+
+/** Merge matching channel entries while retaining every source's playback URL. */
+export function mergeDuplicateChannels(items: CatalogItem[]): CatalogItem[] {
+  const result: CatalogItem[] = [];
+  const channelIndex = new Map<string, number>();
+  for (const item of items) {
+    if (item.kind !== 'channel') { result.push(item); continue; }
+    const titleKey = normalizeChannelTitle(item.title);
+    if (!titleKey || genericChannelTitles.has(titleKey)) { result.push(item); continue; }
+    const key = `channel:${titleKey}`;
+    const existingIndex = channelIndex.get(key);
+    if (existingIndex === undefined) {
+      channelIndex.set(key, result.length);
+      result.push({ ...item, mirrors: [{ source: item.source, url: item.url, playUrl: item.playUrl || item.url }] });
+      continue;
+    }
+    const existing = result[existingIndex];
+    const mirrors = existing.mirrors || [{ source: existing.source, url: existing.url, playUrl: existing.playUrl || existing.url }];
+    if (!mirrors.some((mirror) => mirror.source === item.source && mirror.url === item.url)) {
+      mirrors.push({ source: item.source, url: item.url, playUrl: item.playUrl || item.url });
+    }
+    // Source results are ordered production -> reserve -> third mirror, so the
+    // first card remains the preferred source and playback fallback options survive.
+    result[existingIndex] = { ...existing, mirrors };
+  }
+  return result;
 }
 
 export async function fetchSourceCatalog(source: SourceId): Promise<SourceCatalogResult> {
@@ -145,15 +183,17 @@ export async function fetchSourceCatalog(source: SourceId): Promise<SourceCatalo
       const urlTitle = (() => { try { const u = new URL(href); return u.searchParams.get('slug') || u.pathname.split('/').filter(Boolean).pop()?.replace(/\.php$/i, '').replace(/[-_]+/g, ' ' ) || ''; } catch { return ''; } })();
       const fromText = clean(titleRaw).replace(/^(смотреть|видео|канал|форум)\s*[:—-]?\s*/i, '');
       const title = fromText || clean(urlTitle);
-      if (!href || !title || title.length < 2 || title.length > 180 || ignored.test(title)) return;
+      if (!href || !title || title.length < 2 || title.length > 180 || ignored.test(title) || serviceTitle.test(title)) return;
       let parsed: URL;
       try { parsed = new URL(href); } catch { return; }
       const rootHost = new URL(root).hostname;
       if (!['http:', 'https:'].includes(parsed.protocol) || (parsed.hostname !== rootHost && !parsed.hostname.endsWith(`.${rootHost}`))) return;
-      if (parsed.pathname.match(/\.(css|js|png|jpe?g|gif|svg|webp|ico|woff2?|pdf)$/i)) return;
+      if (parsed.pathname.match(/\.(css|js|png|jpe?g|gif|svg|webp|ico|woff2?|pdf|xml|txt|json)$/i) || servicePath.test(parsed.pathname)) return;
       const thumb = abs(thumbRaw, root);
       const context = clean(contextRaw).slice(0, 500);
       const kind = classify(title, href, context);
+      if (kind === 'other' && (!thumb || serviceTitle.test(title))) return;
+      if (kind === 'channel' && genericChannelTitles.has(normalizeChannelTitle(title))) return;
       const hasCardContext = /card|item|channel|video|film|forum|topic|post|article|entry|tile|catalog|media/i.test(context);
       const mediaLikeUrl = /channel|watch|stream|live|tv|embed|player|film|movie|video|forum|topic|thread|discussion|\.m3u8/i.test(`${parsed.pathname}${parsed.search}`);
       // Keep cards with a thumbnail, recognizable content URL, or a content-card wrapper.

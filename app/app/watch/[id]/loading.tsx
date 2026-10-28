@@ -1,0 +1,1 @@
+export default function WatchLoading() { return <main className="grid min-h-screen place-items-center bg-black text-[#00f2ea]"><div className="animate-pulse rounded-xl border border-white/10 bg-[#101015] px-6 py-5">Загружаем страницу просмотра…</div></main>; }

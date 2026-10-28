@@ -6,3 +6,12 @@ Stream Live PWA — исправление сборки Layero
 4. Источники отображаются в порядке: production freedev.app, резерв domtv.blyz.ru, третье зеркало web1337.net. Карточки из разных источников не дедуплицируются.
 5. Серверный загрузчик обрабатывает cookie/PoW challenge, а карточки channel.php/video.php получают embed URL для экрана просмотра. Исходная URL сохраняется для кнопки «Источник».
 6. TLS fallback ограничен тремя настроенными доменами и применяется только при ошибках сертификата. Исправный сертификат на источниках всё равно предпочтительнее.
+
+
+CATALOG CLEANUP UPDATE
+- Filters service/navigation pages and technical titles before adding cards.
+- Merges same-title channel cards across production and mirrors, while retaining each mirror URL and embed/play URL.
+- Watch page includes a source selector for merged channels so playback can be switched to another mirror.
+- Catalog cards are grouped by source; selecting one source still shows merged channels available on that source.
+- Non-channel entries (videos/forum/other) are not cross-source merged.
+- TypeScript/TSX syntax transpilation checked: 17 files, 0 syntax diagnostics. Full Next production build was not run in this environment.
