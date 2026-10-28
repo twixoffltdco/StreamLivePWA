@@ -2,11 +2,11 @@ import type { Metadata, Viewport } from 'next';
 import '@/styles/globals.css';
 
 export const metadata: Metadata = {
-  title: 'StreamLive Native App — нативный PWA для стриминга',
+  title: 'StreamLive PWA — единый каталог каналов, видео и форума',
   description:
-    'Нативное веб-приложение для domtv.blyz.ru, streamlivetv.freedev.app и streamliveru.web1337.net. Установка как PWA, управление с пульта (D-pad), Picture-in-Picture.',
+    'StreamLive PWA объединяет каналы, видео и материалы с domtv.blyz.ru, streamlivetv.freedev.app и streamliveru.web1337.net. Установка на телефон, планшет и совместимые ТВ-устройства.',
   manifest: '/manifest.json',
-  applicationName: 'StreamLive TV',
+  applicationName: 'StreamLive PWA',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',

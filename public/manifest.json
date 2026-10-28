@@ -1,7 +1,7 @@
 {
-  "name": "StreamLive TV",
+  "name": "StreamLive PWA",
   "short_name": "StreamLive",
-  "description": "Нативное веб-приложение для domtv.blyz.ru, streamlivetv.freedev.app и streamliveru.web1337.net. Управление с пульта (D-pad), Picture-in-Picture, полноэкранный режим.",
+  "description": "Единый PWA-каталог каналов, видео и форума из трёх источников. Управление с пульта (D-pad), избранное и отдельный экран просмотра.",
   "start_url": "/app",
   "scope": "/",
   "display": "standalone",

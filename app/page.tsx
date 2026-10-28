@@ -1,11 +1,10 @@
 /**
- * app/page.tsx — лендинг StreamLive Native App.
+ * app/page.tsx — лендинг StreamLive PWA.
  * Zoomer 2026: чёрный фон, неон #00f2ea / #fe2c55, крупные шрифты, D-pad friendly.
  */
 
 import Link from 'next/link';
 import {
-  Github,
   Tv,
   Smartphone,
   PictureInPicture2,
@@ -50,15 +49,6 @@ export default function LandingPage() {
           >
             ▶ Открыть приложение
           </Link>
-          <a
-            href="https://github.com/streamlive/streamlive-native-web-app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="sl-focus rounded-xl border border-white/15 bg-[#15151c] p-3 text-zinc-200 hover:border-[#00f2ea]/60"
-            aria-label="GitHub репозиторий"
-          >
-            <Github size={22} aria-hidden />
-          </a>
         </nav>
       </header>
 
@@ -70,11 +60,11 @@ export default function LandingPage() {
 
         <h1 className="text-5xl font-black leading-[1.05] tracking-tight sm:text-7xl lg:text-8xl">
           StreamLive{' '}
-          <span className="sl-gradient-text">Native App</span>
+          <span className="sl-gradient-text">PWA</span>
         </h1>
 
         <p className="mt-8 max-w-3xl text-xl leading-relaxed text-zinc-300 sm:text-2xl">
-          Нативное веб-приложение для{' '}
+          PWA-каталог для{' '}
           <b className="text-white">domtv.blyz.ru</b>,{' '}
           <b className="text-white">streamlivetv.freedev.app</b> и{' '}
           <b className="text-white">streamliveru.web1337.net</b>.
@@ -94,14 +84,14 @@ export default function LandingPage() {
           href="/app"
           className="sl-focus mt-10 inline-flex items-center gap-2 text-lg font-bold text-[#00f2ea] underline-offset-8 hover:underline"
         >
-         或不安装 — просто смотреть в браузере <ArrowRight size={20} aria-hidden />
+         Не устанавливать — смотреть в браузере <ArrowRight size={20} aria-hidden />
         </Link>
       </section>
 
       {/* ================= FEATURES ================= */}
       <section aria-labelledby="features-title" className="relative z-10 mx-auto max-w-7xl px-6 pb-24">
         <h2 id="features-title" className="mb-12 text-center text-4xl font-black sm:text-5xl">
-          Не сайт. <span className="sl-gradient-text">Нативное приложение.</span>
+          Одна лента. <span className="sl-gradient-text">Три источника.</span>
         </h2>
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           <FeatureCard
@@ -257,20 +247,11 @@ export default function LandingPage() {
       <footer className="relative z-10 border-t border-white/10 py-10">
         <div className="mx-auto flex max-w-7xl flex-col items-center gap-4 px-6 text-center">
           <p className="text-lg font-bold">
-            StreamLive Native App <span className="text-zinc-500">· MIT License · 2026</span>
+            StreamLive PWA <span className="text-zinc-500">· MIT License · 2026</span>
           </p>
           <p className="max-w-2xl text-sm text-zinc-500">
-            Сделано сообществом для сообщества. Next.js 14 · next-pwa · TypeScript · Tailwind CSS · Lucide.
-            Деплой: Tatnet.ru, Render, Layer0, Vercel — что угодно, ведь это статика.
+            StreamLive PWA · Next.js 14 · TypeScript · Tailwind CSS. Для серверного каталога требуется хостинг с Node.js/Next.js runtime.
           </p>
-          <a
-            href="https://github.com/streamlive/streamlive-native-web-app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="sl-focus inline-flex items-center gap-2 rounded-xl border border-white/15 bg-[#15151c] px-5 py-3 font-bold text-zinc-200 hover:border-[#00f2ea]/60"
-          >
-            <Github size={20} aria-hidden /> Star на GitHub
-          </a>
         </div>
       </footer>
     </div>

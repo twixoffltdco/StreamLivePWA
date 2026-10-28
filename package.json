@@ -1,14 +1,10 @@
 {
-  "name": "streamlive-native-web-app",
+  "name": "stream-live-pwa",
   "version": "1.0.0",
   "private": true,
-  "description": "StreamLive Native Web App — первый нативный PWA-плеер для domtv.blyz.ru, streamlivetv.freedev.app и streamliveru.web1337.net с TV-оптимизированным управлением (D-pad) и Picture-in-Picture.",
+  "description": "Stream Live PWA — единый каталог для domtv.blyz.ru, streamlivetv.freedev.app и streamliveru.web1337.net с TV-оптимизированным управлением (D-pad) и Picture-in-Picture.",
   "license": "MIT",
   "author": "StreamLive Community",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/streamlive/streamlive-native-web-app.git"
-  },
   "keywords": [
     "pwa",
     "nextjs",
