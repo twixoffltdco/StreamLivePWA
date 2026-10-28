@@ -135,7 +135,7 @@ export default function LandingPage() {
         <ul className="grid gap-4 sm:grid-cols-3">
           {SOURCES.map((s, i) => (
             <li key={s.id} className="sl-card p-6 text-center">
-              <p className="text-sm font-bold uppercase tracking-widest text-zinc-500">Зеркало №{i + 1}</p>
+              <p className="text-sm font-bold uppercase tracking-widest text-zinc-500">{s.hint}</p>
               <p className="mt-2 break-all text-lg font-black text-[#00f2ea]">{s.domain}</p>
               <a
                 href={s.url}

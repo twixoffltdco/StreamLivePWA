@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
 import { fetchSourceCatalog, type SourceId } from '@/lib/scraper';
 
+export const runtime = 'nodejs';
+
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
-const IDS: SourceId[] = ['domtv', 'freedev', 'web1337'];
+const IDS: SourceId[] = ['freedev', 'domtv', 'web1337'];
 
 export async function GET(req: Request) {
   const selected = new URL(req.url).searchParams.get('source');

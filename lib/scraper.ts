@@ -4,6 +4,8 @@
  * зеркалах намеренно не объединяются и не удаляются.
  */
 import * as cheerio from 'cheerio';
+import { promises as fs } from 'node:fs';
+import { fetchSourcePage } from './source-fetch';
 
 export type SourceId = 'domtv' | 'freedev' | 'web1337';
 export type ContentKind = 'channel' | 'video' | 'forum' | 'other';
@@ -16,6 +18,7 @@ export type CatalogItem = {
   source: SourceId;
   kind: ContentKind;
   description?: string;
+  playUrl?: string;
 };
 export type ChannelItem = CatalogItem;
 export type VideoData = { title: string; description: string; videoUrl: string; thumbnail: string; source: SourceId };
@@ -28,19 +31,47 @@ export type SourceDiagnostic = {
   itemCount: number;
   error?: string;
   blocked?: boolean;
+  cached?: boolean;
 };
 export type SourceCatalogResult = { source: SourceId; items: CatalogItem[]; diagnostic: SourceDiagnostic };
+
+const CATALOG_ARCHIVE_PATH = '/tmp/streamlive-pwa-catalog.json';
+const FRESH_CACHE_MS = 60 * 1000;
+const sourceCache = new Map<SourceId, { items: CatalogItem[]; savedAt: number }>();
+let archiveLoadPromise: Promise<void> | null = null;
+let archiveWritePromise: Promise<void> = Promise.resolve();
+
+async function loadCatalogArchive(): Promise<void> {
+  if (!archiveLoadPromise) {
+    archiveLoadPromise = fs.readFile(CATALOG_ARCHIVE_PATH, 'utf8').then((raw) => {
+      const parsed = JSON.parse(raw) as Record<string, { items?: CatalogItem[]; savedAt?: number }>;
+      for (const id of ['domtv', 'freedev', 'web1337'] as SourceId[]) {
+        const entry = parsed[id];
+        if (entry && Array.isArray(entry.items) && entry.items.length) {
+          sourceCache.set(id, { items: entry.items, savedAt: Number(entry.savedAt) || 0 });
+        }
+      }
+    }).catch(() => undefined);
+  }
+  await archiveLoadPromise;
+}
+
+async function saveCatalogArchive(): Promise<void> {
+  archiveWritePromise = archiveWritePromise.then(async () => {
+    const data: Record<string, { items: CatalogItem[]; savedAt: number }> = {};
+    for (const [id, entry] of sourceCache) data[id] = entry;
+    try { await fs.writeFile(CATALOG_ARCHIVE_PATH, JSON.stringify(data), 'utf8'); }
+    catch (error) { console.warn('[StreamLive PWA cache] archive write failed:', error instanceof Error ? error.message : error); }
+  });
+  await archiveWritePromise;
+}
 
 export const SOURCE_ROOTS: Record<SourceId, string> = {
   domtv: 'https://domtv.blyz.ru',
   freedev: 'https://streamlivetv.freedev.app',
   web1337: 'https://streamliveru.web1337.net',
 };
-const headers = {
-  'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36 StreamLivePWA/1.1',
-  accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-  'accept-language': 'ru-RU,ru;q=0.9,en;q=0.7',
-};
+
 const abs = (v: string | undefined, base: string) => {
   if (!v) return '';
   try { return new URL(v, base).toString(); } catch { return ''; }
@@ -57,6 +88,25 @@ function classify(title: string, href: string, context: string): ContentKind {
   return 'other';
 }
 
+function toPlayUrl(rawUrl: string, kind: ContentKind): string {
+  try {
+    const u = new URL(rawUrl);
+    const slug = u.searchParams.get('slug') || u.pathname.match(/\/(?:channel|channel-pc|video|embed|watch|embed_video)\/([^/?#]+)/i)?.[1];
+    if (!slug) {
+      if (kind === 'channel' && /\/(?:channel|channel-pc)\.php$/i.test(u.pathname)) {
+        u.pathname = '/embed.php'; u.searchParams.set('cinema', '0'); return u.toString();
+      }
+      if (kind === 'video' && /\/video\.php$/i.test(u.pathname)) {
+        u.pathname = '/embed_video.php'; return u.toString();
+      }
+      return rawUrl;
+    }
+    if (kind === 'video') return `${u.origin}/embed_video.php?slug=${encodeURIComponent(slug)}`;
+    if (kind === 'channel') return `${u.origin}/embed.php?slug=${encodeURIComponent(slug)}&cinema=0`;
+    return rawUrl;
+  } catch { return rawUrl; }
+}
+
 function looksBlocked(html: string, status: number): boolean {
   return status === 403 || status === 429 || challengePattern.test(html.slice(0, 12000));
 }
@@ -70,20 +120,21 @@ function makeId(source: SourceId, href: string): string {
 export async function fetchSourceCatalog(source: SourceId): Promise<SourceCatalogResult> {
   const root = SOURCE_ROOTS[source];
   const started = Date.now();
+  await loadCatalogArchive();
+  const cached = sourceCache.get(source);
+  if (cached && Date.now() - cached.savedAt < FRESH_CACHE_MS) {
+    return { source, items: cached.items, diagnostic: { source, url: root, ok: true, elapsedMs: 0, itemCount: cached.items.length, cached: true } };
+  }
   try {
-    const response = await fetch(root, {
-      headers,
-      signal: AbortSignal.timeout(14000),
-      redirect: 'follow',
-      cache: 'no-store',
-    });
-    const html = await response.text();
+    const response = await fetchSourcePage(root, source);
+    const html = response.html;
+    const baseUrl = response.finalUrl || root;
     const elapsedMs = Date.now() - started;
-    if (!response.ok) {
-      return { source, items: [], diagnostic: { source, url: root, ok: false, status: response.status, elapsedMs, itemCount: 0, error: `Источник вернул HTTP ${response.status}`, blocked: looksBlocked(html, response.status) } };
-    }
     if (looksBlocked(html, response.status)) {
-      return { source, items: [], diagnostic: { source, url: root, ok: false, status: response.status, elapsedMs, itemCount: 0, error: 'Источник вернул страницу проверки браузера вместо каталога. Нужен разрешённый API/доступ источника.', blocked: true } };
+      if (cached?.items.length) {
+        return { source, items: cached.items, diagnostic: { source, url: response.finalUrl, ok: false, status: response.status, elapsedMs, itemCount: cached.items.length, cached: true, error: 'Источник снова вернул проверочную страницу; показан последний сохранённый каталог.', blocked: true } };
+      }
+      return { source, items: [], diagnostic: { source, url: response.finalUrl, ok: false, status: response.status, elapsedMs, itemCount: 0, error: 'Источник по-прежнему возвращает проверочную страницу вместо каталога.', blocked: true } };
     }
 
     const $ = cheerio.load(html);
@@ -91,7 +142,9 @@ export async function fetchSourceCatalog(source: SourceId): Promise<SourceCatalo
     const seenWithinSource = new Set<string>();
     const add = (hrefRaw: string | undefined, titleRaw: string, thumbRaw: string | undefined, contextRaw = '', descriptionRaw = '') => {
       const href = abs(hrefRaw, root);
-      const title = clean(titleRaw).replace(/^(смотреть|видео|канал|форум)\s*[:—-]?\s*/i, '');
+      const urlTitle = (() => { try { const u = new URL(href); return u.searchParams.get('slug') || u.pathname.split('/').filter(Boolean).pop()?.replace(/\.php$/i, '').replace(/[-_]+/g, ' ' ) || ''; } catch { return ''; } })();
+      const fromText = clean(titleRaw).replace(/^(смотреть|видео|канал|форум)\s*[:—-]?\s*/i, '');
+      const title = fromText || clean(urlTitle);
       if (!href || !title || title.length < 2 || title.length > 180 || ignored.test(title)) return;
       let parsed: URL;
       try { parsed = new URL(href); } catch { return; }
@@ -108,7 +161,7 @@ export async function fetchSourceCatalog(source: SourceId): Promise<SourceCatalo
       if (seenWithinSource.has(href)) return;
       seenWithinSource.add(href);
       found.push({
-        id: makeId(source, href), title, url: href, thumbnail: thumb,
+        id: makeId(source, href), title, url: href, playUrl: toPlayUrl(href, kind), thumbnail: thumb,
         isLive: /live|прямой эфир|эфир|онлайн/i.test(`${title} ${href} ${context}`),
         source, kind, description: clean(descriptionRaw).slice(0, 500) || undefined,
       });
@@ -125,7 +178,7 @@ export async function fetchSourceCatalog(source: SourceId): Promise<SourceCatalo
       const title = a.attr('title') || img.attr('alt') || contextNode.find('h1,h2,h3,h4,[class*=title],[class*=name]').first().text() || a.text();
       const thumb = img.attr('data-src') || img.attr('data-lazy-src') || img.attr('data-original') || img.attr('data-image') || img.attr('src') || contextNode.find('[data-image]').first().attr('data-image');
       const description = contextNode.find('p,[class*=description],[class*=summary],[class*=excerpt]').first().text();
-      add(href, title, thumb, `${a.attr('class') || ''} ${contextNode.attr('class') || ''}`, description);
+      add(abs(href, baseUrl), title, abs(thumb, baseUrl), `${a.attr('class') || ''} ${contextNode.attr('class') || ''}`, description);
     });
 
     // Fallback for sites whose title link is nested separately from the image.
@@ -142,7 +195,7 @@ export async function fetchSourceCatalog(source: SourceId): Promise<SourceCatalo
     const sectionUrls = new Set<string>();
     $('a[href]').each((_, el) => {
       if (sectionUrls.size >= 6) return;
-      const href = abs($(el).attr('href'), root);
+      const href = abs($(el).attr('href'), baseUrl);
       if (!href || href === root || href === `${root}/`) return;
       try {
         const parsed = new URL(href);
@@ -154,9 +207,8 @@ export async function fetchSourceCatalog(source: SourceId): Promise<SourceCatalo
     });
     await Promise.all([...sectionUrls].map(async (pageUrl) => {
       try {
-        const pageResponse = await fetch(pageUrl, { headers, signal: AbortSignal.timeout(7000), redirect: 'follow', cache: 'no-store' });
-        if (!pageResponse.ok) return;
-        const pageHtml = await pageResponse.text();
+        const pageResponse = await fetchSourcePage(pageUrl, source);
+        const pageHtml = pageResponse.html;
         if (looksBlocked(pageHtml, pageResponse.status)) return;
         const page = cheerio.load(pageHtml);
         page('a[href]').each((_, el) => {
@@ -183,13 +235,23 @@ export async function fetchSourceCatalog(source: SourceId): Promise<SourceCatalo
 
     const items = found.slice(0, 250);
     const elapsed = Date.now() - started;
+    if (items.length) {
+      sourceCache.set(source, { items, savedAt: Date.now() });
+      await saveCatalogArchive();
+      return {
+        source, items,
+        diagnostic: { source, url: response.finalUrl || root, ok: true, status: response.status, elapsedMs: elapsed, itemCount: items.length },
+      };
+    }
+    if (cached?.items.length) {
+      return {
+        source, items: cached.items,
+        diagnostic: { source, url: response.finalUrl || root, ok: false, status: response.status, elapsedMs: elapsed, itemCount: cached.items.length, cached: true, error: 'Источник ответил, но карточки не распознаны; показан последний сохранённый каталог.' },
+      };
+    }
     return {
-      source, items,
-      diagnostic: {
-        source, url: response.url || root, ok: true, status: response.status, elapsedMs: elapsed,
-        itemCount: items.length,
-        ...(items.length ? {} : { error: `Страница доступна (HTTP ${response.status}), но распознаваемые карточки не найдены; HTML может быть пустым или отрисовываться JavaScript-кодом.` }),
-      },
+      source, items: [],
+      diagnostic: { source, url: response.finalUrl || root, ok: true, status: response.status, elapsedMs: elapsed, itemCount: 0, error: 'Страница доступна, но карточки не распознаны. Проверьте HTML главной страницы и разделов.' },
     };
   } catch (error) {
     const elapsedMs = Date.now() - started;
@@ -197,6 +259,10 @@ export async function fetchSourceCatalog(source: SourceId): Promise<SourceCatalo
     const causeText = cause instanceof Error ? `; причина: ${cause.message}` : '';
     const message = error instanceof Error ? `${error.name}: ${error.message}${causeText}` : 'Неизвестная ошибка запроса';
     console.error(`[StreamLive PWA scraper] ${source}: ${message}`);
+    const stale = sourceCache.get(source);
+    if (stale?.items.length) {
+      return { source, items: stale.items, diagnostic: { source, url: root, ok: false, elapsedMs, itemCount: stale.items.length, cached: true, error: `Источник временно недоступен; показан последний сохранённый каталог. ${message}` } };
+    }
     return { source, items: [], diagnostic: { source, url: root, ok: false, elapsedMs, itemCount: 0, error: message } };
   }
 }
@@ -209,14 +275,14 @@ export async function fetchChannels(source: SourceId): Promise<ChannelItem[]> {
 export async function fetchVideoData(url: string, source: SourceId): Promise<VideoData> {
   const root = SOURCE_ROOTS[source], parsed = new URL(url), host = new URL(root).hostname;
   if (parsed.protocol !== 'https:' || (parsed.hostname !== host && !parsed.hostname.endsWith(`.${host}`))) throw new Error('URL не принадлежит выбранному источнику');
-  const r = await fetch(url, { headers, signal: AbortSignal.timeout(12000), redirect: 'follow', cache: 'no-store' });
-  const html = await r.text();
-  if (!r.ok) throw new Error(`Источник вернул HTTP ${r.status}`);
+  const r = await fetchSourcePage(url, source);
+  const html = r.html;
   if (looksBlocked(html, r.status)) throw new Error('Источник вернул страницу проверки браузера вместо страницы контента');
   const $ = cheerio.load(html);
   const title = clean($('meta[property="og:title"]').attr('content') || $('title').text() || $('h1').first().text() || 'StreamLive');
   const description = clean($('meta[property="og:description"]').attr('content') || $('meta[name="description"]').attr('content') || $('main p').first().text());
   const thumbnail = abs($('meta[property="og:image"]').attr('content') || $('video[poster]').attr('poster'), url);
-  const videoUrl = abs($('video source[src]').first().attr('src') || $('video[src]').first().attr('src') || $('iframe[src]').first().attr('src') || url, url);
+  const kind = classify(title, url, html.slice(0, 12000));
+  const videoUrl = abs($('video source[src]').first().attr('src') || $('video[src]').first().attr('src') || $('iframe[src]').first().attr('src') || toPlayUrl(url, kind), url);
   return { title, description, videoUrl, thumbnail, source };
 }

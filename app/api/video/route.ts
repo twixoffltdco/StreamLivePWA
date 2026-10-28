@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { fetchVideoData, type SourceId } from '@/lib/scraper';
-const IDS: SourceId[] = ['domtv', 'freedev', 'web1337'];
+
+export const runtime = 'nodejs';
+const IDS: SourceId[] = ['freedev', 'domtv', 'web1337'];
 export async function GET(req: Request) {
   const u = new URL(req.url), url = u.searchParams.get('url') || '', raw = u.searchParams.get('source') || 'domtv';
   if (!IDS.includes(raw as SourceId)) return NextResponse.json({ ok: false, error: 'Неизвестный источник' }, { status: 400 });

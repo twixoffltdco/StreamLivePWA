@@ -1,6 +1,6 @@
 {
   "name": "stream-live-pwa",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "Stream Live PWA — единый каталог для domtv.blyz.ru, streamlivetv.freedev.app и streamliveru.web1337.net с TV-оптимизированным управлением (D-pad) и Picture-in-Picture.",
   "license": "MIT",
@@ -25,10 +25,11 @@
   },
   "dependencies": {
     "lucide-react": "^0.344.0",
-    "next": "14.2.5",
+    "next": "14.2.35",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "cheerio": "^1.0.0"
+    "cheerio": "^1.0.0",
+    "undici": "^7.30.1"
   },
   "devDependencies": {
     "@types/node": "^20.11.30",

@@ -18,29 +18,29 @@ export interface StreamSource {
 
 export const SOURCES: StreamSource[] = [
   {
-    id: 'domtv',
-    domain: 'domtv.blyz.ru',
-    label: 'DomTV',
-    hint: 'Зеркало №1 · blyz.ru',
-    url: 'https://domtv.blyz.ru',
-  },
-  {
     id: 'freedev',
     domain: 'streamlivetv.freedev.app',
-    label: 'StreamLive TV',
-    hint: 'Зеркало №2 · freedev.app',
+    label: 'Production · StreamLive TV',
+    hint: 'Основной production · freedev.app',
     url: 'https://streamlivetv.freedev.app',
+  },
+  {
+    id: 'domtv',
+    domain: 'domtv.blyz.ru',
+    label: 'Зеркало · DomTV',
+    hint: 'Резервное зеркало · blyz.ru',
+    url: 'https://domtv.blyz.ru',
   },
   {
     id: 'web1337',
     domain: 'streamliveru.web1337.net',
-    label: 'StreamLive RU',
+    label: 'Зеркало · StreamLive RU',
     hint: 'Зеркало №3 · web1337.net',
     url: 'https://streamliveru.web1337.net',
   },
 ];
 
-export const DEFAULT_SOURCE_ID = SOURCES[0].id;
+export const DEFAULT_SOURCE_ID = 'freedev';
 
 export function getSourceById(id: string | null | undefined): StreamSource {
   return SOURCES.find((s) => s.id === id) ?? SOURCES[0];

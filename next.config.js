@@ -32,9 +32,6 @@ const nextConfig = {
   // Для деплоя статики на Tatnet / Onrender / Layer0 можно включить:
   // output: 'export',
   reactStrictMode: true,
-  images: {
-    unoptimized: true, // iframe-ориентированное приложение: remote images не нужны
-  },
   async headers() {
     return [
       {
